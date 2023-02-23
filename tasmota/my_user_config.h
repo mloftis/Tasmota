@@ -734,6 +734,10 @@
 //    #define MAX_DT_VARS     16                   // Defaults to 7
 //    #define USE_GRAPH                            // Enable line charts with displays
 //    #define NUM_GRAPHS     4                     // Max 16
+//#define USE_TC74                                 // Add support for TC74
+//  #define TC74_MAX_SENSORS 8                   // Support non-default/multiple I2C addresses
+//  #define TC74_I2C_PROBE_ADDRESSES { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F }  // Addresses to probe/support
+//  #define TC74_MAX_FAILCOUNT 8                 // maximum failed polls before it's marked inactive until reprobing later
 
 #endif  // USE_I2C
 
@@ -819,10 +823,6 @@
 //  #define VINDRIKTNING_SHOW_PM1                  // Display undocumented/supposed PM1.0 values
 //  #define VINDRIKTNING_SHOW_PM10                 // Display undocumented/supposed PM10 values
 //#define USE_LD2410                               // Add support for HLK-LD2410 24GHz smart wave motion sensor (+2k8 code)
-//#define USE_TC74                                 // Add support for TC74
-//  #define TC74_MAX_SENSORS 8                   // Support non-default/multiple I2C addresses
-//  #define TC74_I2C_PROBE_ADDRESSES { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F }  // Addresses to probe/support
-//  #define TC74_MAX_FAILCOUNT 8                 // maximum failed polls before it's marked inactive until reprobing later
 
 // -- Power monitoring sensors --------------------
 #define USE_ENERGY_SENSOR                        // Add support for Energy Monitors (+14k code)

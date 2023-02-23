@@ -19,7 +19,7 @@
 */
 
 #ifdef USE_I2C
-#if defined(USE_AHT1x)
+#if defined(USE_TC74)
 
 /*********************************************************************************************\
  * TC74 - Temperature Sensor
@@ -95,6 +95,7 @@ struct {
 
 
 void TC74InitState() {
+    AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 InitState"));
     for (uint8_t i = 0; i < TC74_MAX_SENSORS; i++) {
         tc74_sensors[i].is_active = false;
         tc74_sensors[i].failed_count = 0;
@@ -107,7 +108,7 @@ void TC74Detect(bool forced) {
         uint8_t config_reg;
         uint8_t addr = tc74_sensors[i].address;
 
-        AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X probing"));
+        AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X probing"), addr);
 
         // if we failed more than N times, unless we're being forced to, skip it.
         if(!forced && tc74_sensors[i].failed_count >= TC74_MAX_FAILCOUNT ) {
@@ -115,36 +116,45 @@ void TC74Detect(bool forced) {
             continue;
         }
 
-        if(!I2cSetDevice(addr)) {
-            tc74_sensors[i].is_active = false;
+        // I2cSetDevice ALWAYs returns false if a device is marked active already...
+        // So if we have the is_active flag for this device SKIP this check
+        if(!tc74_sensors[i].is_active && !I2cSetDevice(addr)) {
             if(tc74_sensors[i].failed_count < 253) { tc74_sensors[i].failed_count++; }
+            AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X failed I2cSetDevice"), addr);
             continue;
         }
 
         // Pull CONFIG and check it, best we can do to keep away from other I2C devices
         if(!I2cValidRead8(&config_reg, addr, TC74_CMD_RWCR)) {
-            if(tc74_sensors[i].is_active) {
-                tc74_sensors[i].is_active = false;
-                AddLog(LOG_LEVEL_ERROR, PSTR("TC74 at addr %X failed CONFIG read, deactivated"), addr);
-                if(I2cActive(addr)) { I2cResetActive(addr); }
-            }
+            tc74_sensors[i].is_active = false;
+            AddLog(LOG_LEVEL_ERROR, PSTR("TC74 at addr %X failed CONFIG read, deactivated"), addr);
+            if(I2cActive(addr)) { I2cResetActive(addr); }
+
             tc74_sensors[i].failed_count++;
             continue;
         }
 
         // if any reserved bits are set, not our device
         if(config_reg & TC74_CONFIG_MASK != 0x00 ) {
+            tc74_sensors[i].is_active = false;
+            tc74_sensors[i].failed_count++;
+            if(I2cActive(addr)) { I2cResetActive(addr); }
             AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X found reserved bits set [%x]"), addr, config_reg);
+
             continue;
         }
 
         // Make sure STANDBY is not set, POR should be clear, but, if another I2C driver toggled it....
         I2cWrite8(addr, TC74_CMD_RWCR, 0x0);
 
-        tc74_sensors[i].is_active = true;
+        if(!tc74_sensors[i].is_active) {
+            tc74_sensors[i].is_active = true;
+            AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X set active"), addr);
+            I2cSetActiveFound(addr, "TC74");
+        }
         tc74_sensors[i].failed_count = 0;
 
-        I2cSetActiveFound(addr, "TC74");
+
 
     } // for sensors...
 }
@@ -175,6 +185,8 @@ void TC74PollActive() {
 
 
         tc74_sensors[i].temperature = ConvertTemp(temperature_register);
+        AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X register temperature was %hhi or [%i]"), addr, temperature_register, temperature_register);
+        AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X stored temperature %*_f"), addr, Settings->flag2.temperature_resolution, &tc74_sensors[i].temperature);
         tc74_sensors[i].failed_count = 0;
 
     } // for sensors...
@@ -186,7 +198,7 @@ void TC74Show(bool json) {
     for (uint8_t i = 0; i < TC74_MAX_SENSORS; i++) {
         if(tc74_sensors[i].is_active) {
             char sname[7];
-            snprintf_P(sname, sizeof(sname), PSTR("TC74%02X"), tc74_sensors[i].address);
+            snprintf_P(sname, sizeof(sname), PSTR("TC74%02hhX"), tc74_sensors[i].address);
             if(json) {
                 ResponseAppend_P(JSON_SNS_F_TEMP, sname, Settings->flag2.temperature_resolution, &tc74_sensors[i].temperature);
 //                ResponseAppend_P(PSTR(",\"%s\":{\"" D_JSON_ID "\":\"%X\",\"" D_JSON_TEMPERATURE "\":%f}"),

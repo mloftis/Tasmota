@@ -38,7 +38,7 @@
  * of defines, there is also no good way to ID these sensors as there's no MSR
  * and nothing unique about their information.
  *
- * These sensors only have a nominal 1C resolution.  The devices are sold
+ * These sensors only have a nominal 1C resolution.  The git checkout developmentdevices are sold
  * calibrated to a specific supply voltage but will work from 2.7V-5.5V, but
  * will suffer 1C per Volt deviation from the rating of accuracy loss.  They're
  * only accurate to about +/-2C to begin with.

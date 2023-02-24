@@ -107,8 +107,9 @@ void TC74Detect(bool forced) {
     for (uint8_t i = 0; i < TC74_MAX_SENSORS; i++) {
         uint8_t config_reg;
         uint8_t addr = tc74_sensors[i].address;
-
+#ifdef TC74_EXTRA_DEBUG
         AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X probing"), addr);
+#endif
 
         // if we failed more than N times, unless we're being forced to, skip it.
         if(!forced && tc74_sensors[i].failed_count >= TC74_MAX_FAILCOUNT ) {
@@ -120,17 +121,20 @@ void TC74Detect(bool forced) {
         // So if we have the is_active flag for this device SKIP this check
         if(!tc74_sensors[i].is_active && !I2cSetDevice(addr)) {
             if(tc74_sensors[i].failed_count < 253) { tc74_sensors[i].failed_count++; }
+#ifdef TC74_EXTRA_DEBUG
             AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X failed I2cSetDevice"), addr);
+#endif
             continue;
         }
 
         // Pull CONFIG and check it, best we can do to keep away from other I2C devices
         if(!I2cValidRead8(&config_reg, addr, TC74_CMD_RWCR)) {
             tc74_sensors[i].is_active = false;
-            AddLog(LOG_LEVEL_ERROR, PSTR("TC74 at addr %X failed CONFIG read, deactivated"), addr);
-            if(I2cActive(addr)) { I2cResetActive(addr); }
-
             tc74_sensors[i].failed_count++;
+            if(I2cActive(addr)) { I2cResetActive(addr); }
+#ifdef TC74_EXTRA_DEBUG
+            AddLog(LOG_LEVEL_ERROR, PSTR("TC74 at addr %X failed CONFIG read, deactivated"), addr);
+#endif
             continue;
         }
 
@@ -139,7 +143,9 @@ void TC74Detect(bool forced) {
             tc74_sensors[i].is_active = false;
             tc74_sensors[i].failed_count++;
             if(I2cActive(addr)) { I2cResetActive(addr); }
+#ifdef TC74_EXTRA_DEBUG
             AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X found reserved bits set [%x]"), addr, config_reg);
+#endif
 
             continue;
         }
@@ -149,7 +155,9 @@ void TC74Detect(bool forced) {
 
         if(!tc74_sensors[i].is_active) {
             tc74_sensors[i].is_active = true;
+#ifdef TC74_EXTRA_DEBUG
             AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X set active"), addr);
+#endif
             I2cSetActiveFound(addr, "TC74");
         }
         tc74_sensors[i].failed_count = 0;
@@ -185,9 +193,11 @@ void TC74PollActive() {
 
 
         tc74_sensors[i].temperature = ConvertTemp(temperature_register);
+        tc74_sensors[i].failed_count = 0;
+#ifdef TC74_EXTRA_DEBUG
         AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X register temperature was %hhi or [%i]"), addr, temperature_register, temperature_register);
         AddLog(LOG_LEVEL_DEBUG, PSTR("TC74 at addr %X stored temperature %*_f"), addr, Settings->flag2.temperature_resolution, &tc74_sensors[i].temperature);
-        tc74_sensors[i].failed_count = 0;
+#endif
 
     } // for sensors...
 }
@@ -201,9 +211,8 @@ void TC74Show(bool json) {
             snprintf_P(sname, sizeof(sname), PSTR("TC74%02hhX"), tc74_sensors[i].address);
             if(json) {
                 ResponseAppend_P(JSON_SNS_F_TEMP, sname, Settings->flag2.temperature_resolution, &tc74_sensors[i].temperature);
-//                ResponseAppend_P(PSTR(",\"%s\":{\"" D_JSON_ID "\":\"%X\",\"" D_JSON_TEMPERATURE "\":%f}"),
-//                    sname, tc74_sensors[i].address, tc74_sensors[i].address, tc74_sensors[i].temperature);
-                // also send KNX and Domoticz if enabled...and first sensor reporting...
+                // also send KNX and Domoticz if enabled...and first sensor reporting
+                // might beed guarded by some sort of enable (compile time or otherwise)
                 if((0 == TasmotaGlobal.tele_period) && once) {
 #ifdef USE_DOMOTICZ
                     DomoticzFloatSensor(DZ_TEMP, tc74_sensors[i].temperature);

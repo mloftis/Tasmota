@@ -26,7 +26,13 @@
  *
  * TC74 I2C Address: 0x4D
  * Datasheet: https://ww1.microchip.com/downloads/en/DeviceDoc/21462D.pdf
- * For I2C 0x4D is the standard address, other addresses are available as a
+ *
+ * Eight I2C address variant parts are available.  The part numbers are TC74An where N is
+ * one of the eight addresses noted in the (unused) #defines below.  Be sure to check your
+ * part number for the correct address before building your firmware image!  Due to the
+ * limited RAM in ESP8266's the default configuration does not try to work with all eight.
+ *
+ * For I2C 0x4D, TC74A5 part, is the standard address, other addresses are available as a
  * custom order, eight total addresses.  This driver thus supports up to
  * eight sensors, sensors beyond/other than the default 0x4D require setting
  * of defines, there is also no good way to ID these sensors as there's no MSR
